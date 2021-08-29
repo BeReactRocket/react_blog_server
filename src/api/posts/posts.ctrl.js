@@ -1,97 +1,85 @@
-let postId = 1;
+const { post } = require('.');
+const Post = require('../../models/post');
 
-const posts = [{ id: 1, title: 'TITLE', body: 'BODY' }];
-
-/* NEW POST
+/*
 POST /api/posts
-{ title, body }
+{
+  title: 'TITLE',
+  body: 'BODY',
+  tags: ['tag1', 'tag2']
+}
 */
-exports.write = (ctx) => {
-  const { title, body } = ctx.request.body;
-  const newPost = { id: ++postId, title, body };
-  posts.push(newPost);
-  ctx.status = 201;
-  ctx.body = newPost;
+exports.write = async (ctx) => {
+  const { title, body, tags } = ctx.request.body;
+  const post = new Post({ title, body, tags });
+  try {
+    await post.save();
+    ctx.status = 201;
+    ctx.body = post;
+  } catch (error) {
+    ctx.throw(500, error);
+  }
+};
+exports.list = async (ctx) => {
+  try {
+    const posts = await Post.find({});
+    ctx.body = posts;
+  } catch (error) {
+    ctx.throw(500, error);
+  }
 };
 
-/* GET ALL POSTS
-GET /api/posts
-*/
-exports.list = (ctx) => {
-  ctx.body = posts;
-};
-
-/* GET ONE POST
+/*
 GET /api/posts/:id
 */
-exports.read = (ctx) => {
-  const { id } = ctx.params;
-  const post = posts.find((post) => post.id === parseInt(id));
-  if (!post) {
-    ctx.status = 404;
-    ctx.body = {
-      message: 'Post Not Found.',
-    };
-    return;
+exports.read = async (ctx) => {
+  try {
+    const { id } = ctx.request.params;
+    const post = await Post.findById(id);
+    if (!post) {
+      ctx.status = 404;
+      ctx.body = {
+        message: 'Post Not Found.',
+      };
+      return;
+    }
+    ctx.body = post;
+  } catch (error) {
+    ctx.throw(500, error);
   }
-  ctx.body = post;
 };
 
-/* DELETE A POST
+/*
 DELETE /api/posts/:id
 */
-exports.remove = (ctx) => {
+exports.remove = async (ctx) => {
   const { id } = ctx.params;
-  const index = posts.findIndex((post) => post.id === parseInt(id));
-  if (index === -1) {
-    ctx.status = 404;
-    ctx.body = {
-      message: 'Post Not Found.',
-    };
-    return;
+  try {
+    await Post.findByIdAndRemove(id);
+    ctx.status = 204;
+  } catch (error) {
+    ctx.throw(500, error);
   }
-  posts.splice(index, 1);
-  ctx.status = 204; // No Content
 };
 
-/* REPLACE A POST
-PUT /api/posts/:id
-{ title, body }
-*/
-exports.replace = (ctx) => {
-  const { id } = ctx.params;
-  const index = posts.findIndex((post) => post.id === parseInt(id));
-  if (index === -1) {
-    ctx.status = 404;
-    ctx.body = {
-      message: 'Post Not Found.',
-    };
-    return;
-  }
-  posts[index] = {
-    id,
-    ...ctx.request.body,
-  };
-  ctx.body = posts[index];
-};
-
-/* UPDATE A POST
+/*
 PATCH /api/posts/:id
-{ title, body }
 */
-exports.update = (ctx) => {
+exports.update = async (ctx) => {
   const { id } = ctx.params;
-  const index = posts.findIndex((post) => post.id === parseInt(id));
-  if (index === -1) {
-    ctx.status = 404;
-    ctx.body = {
-      message: 'Post Not Found',
-    };
-    return;
+  try {
+    let post = await Post.findByIdAndUpdate(id, ctx.request.body, {
+      new: true,
+    });
+    if (!post) {
+      ctx.status = 404;
+      ctx.body = {
+        message: 'Post Not Found.',
+      };
+      return;
+    }
+    ctx.body = post;
+  } catch (error) {
+    ctx.throw(500, error);
   }
-  posts[index] = {
-    ...posts[index],
-    ...ctx.request.body,
-  };
-  ctx.body = posts[index];
 };
