@@ -1,5 +1,16 @@
-const { post } = require('.');
 const Post = require('../../models/post');
+const mongoose = require('mongoose');
+const Joi = require('joi');
+
+const { ObjectId } = mongoose.Types;
+exports.checkObjectId = (ctx, next) => {
+  const { id } = ctx.params;
+  if (!ObjectId.isValid(id)) {
+    ctx.status = 400;
+    return;
+  }
+  return next();
+};
 
 /*
 POST /api/posts
@@ -10,6 +21,19 @@ POST /api/posts
 }
 */
 exports.write = async (ctx) => {
+  const schema = Joi.object().keys({
+    title: Joi.string().required(),
+    body: Joi.string().required(),
+    tags: Joi.array().items(Joi.string()).required(),
+  });
+
+  const result = schema.validate(ctx.request.body);
+  if (result.error) {
+    ctx.status = 400;
+    ctx.body = result.error;
+    return;
+  }
+
   const { title, body, tags } = ctx.request.body;
   const post = new Post({ title, body, tags });
   try {
@@ -20,6 +44,10 @@ exports.write = async (ctx) => {
     ctx.throw(500, error);
   }
 };
+
+/*
+GET /api/posts
+*/
 exports.list = async (ctx) => {
   try {
     const posts = await Post.find({});
@@ -67,6 +95,20 @@ PATCH /api/posts/:id
 */
 exports.update = async (ctx) => {
   const { id } = ctx.params;
+
+  const schema = Joi.object().keys({
+    title: Joi.string(),
+    body: Joi.string(),
+    tags: Joi.array().items(Joi.string()),
+  });
+
+  const result = schema.validate(ctx.request.body);
+  if (result.error) {
+    ctx.status = 400;
+    ctx.body = result.error;
+    return;
+  }
+
   try {
     let post = await Post.findByIdAndUpdate(id, ctx.request.body, {
       new: true,
