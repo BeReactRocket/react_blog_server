@@ -32,6 +32,9 @@ exports.register = async (ctx) => {
 
     ctx.status = 201;
     ctx.body = user.serialize();
+
+    const token = user.generateToken();
+    user.setCookie(token, ctx, 1000 * 60 * 60 * 24 * 7, true);
   } catch (error) {
     ctx.throw(500, error);
   }
@@ -66,10 +69,29 @@ exports.login = async (ctx) => {
     }
 
     ctx.body = user.serialize();
+    const token = user.generateToken();
+    user.setCookie(token, ctx, 1000 * 60 * 60 * 24 * 7, true);
   } catch (error) {
     ctx.throw(500, error);
   }
 };
 
-exports.check = async (ctx) => {};
-exports.logout = async (ctx) => {};
+/*
+GET /api/auth/check
+*/
+exports.check = async (ctx) => {
+  const { user } = ctx.state;
+  if (!user) {
+    ctx.status = 401;
+    return;
+  }
+  ctx.body = user;
+};
+
+/*
+POST /api/auth/logout
+*/
+exports.logout = async (ctx) => {
+  ctx.cookies.set('access_token');
+  ctx.status = 204; // No Content
+};
