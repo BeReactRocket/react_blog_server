@@ -3,10 +3,29 @@ const mongoose = require('mongoose');
 const Joi = require('joi');
 
 const { ObjectId } = mongoose.Types;
-exports.checkObjectId = (ctx, next) => {
+exports.getPostById = async (ctx, next) => {
   const { id } = ctx.params;
   if (!ObjectId.isValid(id)) {
     ctx.status = 400;
+    return;
+  }
+  try {
+    const post = await Post.findById(id);
+    if (!post) {
+      ctx.status = 404;
+      return;
+    }
+    ctx.state.post = post;
+    return next();
+  } catch (error) {
+    ctx.throw(500, error);
+  }
+};
+
+exports.checkOwnPost = (ctx, next) => {
+  const { user, post } = ctx.state;
+  if (post.user._id.toString() !== user._id) {
+    ctx.status = 403;
     return;
   }
   return next();
@@ -35,7 +54,7 @@ exports.write = async (ctx) => {
   }
 
   const { title, body, tags } = ctx.request.body;
-  const post = new Post({ title, body, tags });
+  const post = new Post({ title, body, tags, user: ctx.state.user });
   try {
     await post.save();
     ctx.status = 201;
@@ -77,20 +96,7 @@ exports.list = async (ctx) => {
 GET /api/posts/:id
 */
 exports.read = async (ctx) => {
-  try {
-    const { id } = ctx.request.params;
-    const post = await Post.findById(id);
-    if (!post) {
-      ctx.status = 404;
-      ctx.body = {
-        message: 'Post Not Found.',
-      };
-      return;
-    }
-    ctx.body = post;
-  } catch (error) {
-    ctx.throw(500, error);
-  }
+  ctx.body = ctx.state.post;
 };
 
 /*
