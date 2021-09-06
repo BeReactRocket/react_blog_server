@@ -9,6 +9,8 @@ const sanitizeOption = {
     'h2',
     'b',
     'i',
+    'strong',
+    'em',
     'u',
     's',
     'p',
@@ -177,7 +179,7 @@ exports.update = async (ctx) => {
     nextData.body = sanitizeHtml(nextData.body, sanitizeOption);
   }
   try {
-    let post = await Post.findByIdAndUpdate(id, nextData.body, {
+    let post = await Post.findByIdAndUpdate(id, nextData, {
       new: true,
     });
     if (!post) {
